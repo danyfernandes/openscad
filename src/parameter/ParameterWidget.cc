@@ -126,9 +126,11 @@ void ParameterWidget::readFile(QString scadFile)
 
 }
 
-void ParameterWidget::writeFile(QString scadFile)
+void ParameterWidget::writeFileIfNotEmpty(QString scadFile)
 {
-	writeParameterSet(scadFile.replace(".scad", ".json").toStdString());
+	if (!root.empty()){
+		writeParameterSet(scadFile.replace(".scad", ".json").toStdString());
+	}
 }
 
 void ParameterWidget::setComboBoxPresetForSet()
