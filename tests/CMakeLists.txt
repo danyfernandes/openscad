@@ -595,7 +595,7 @@ if ( not ${IMAGEMACIK_NOBINARY} )
 
   message(STATUS "Comparing magicktest1.png with magicktest2.png")
   set(IM_TEST_FILES "${CMAKE_CURRENT_SOURCE_DIR}/magicktest1.png" "${CMAKE_CURRENT_SOURCE_DIR}/magicktest2.png")
-  set(COMPARE_ARGS ${IMAGE_COMPARE_EXECUTABLE} ${IM_TEST_FILES} -alpha Off -compose difference -composite -threshold 10% -morphology Erode Square -format %[fx:w*h*mean] info:)
+  set(COMPARE_ARGS ${IMAGE_COMPARE_EXECUTABLE} ${IM_TEST_FILES} -alpha On -compose difference -composite -threshold 10% -morphology Erode Square -format %[fx:w*h*mean] info:)
   # compare arguments taken from test_cmdline_tool.py
   message(STATUS "Running ImageMagick compare: ${COMPARE_ARGS}")
   execute_process(COMMAND ${COMPARE_ARGS} RESULT_VARIABLE IM_RESULT OUTPUT_VARIABLE IM_OUT )
@@ -841,10 +841,6 @@ target_link_libraries(tests-core ${OPENGL_LIBRARIES} ${GLIB2_LIBRARIES} ${FONTCO
 add_library(tests-common STATIC ${COMMON_SOURCES})
 target_link_libraries(tests-common tests-core)
 
-add_library(tests-cgal STATIC ${CGAL_SOURCES})
-set_target_properties(tests-cgal PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
-
 #
 # Create non-CGAL tests
 #
@@ -853,10 +849,6 @@ target_link_libraries(tests-nocgal tests-common)
 if (NOT NULLGL)
   set_target_properties(tests-nocgal PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG}")
 endif()
-
-add_library(tests-offscreen STATIC ${OFFSCREEN_SOURCES})
-set_target_properties(tests-offscreen PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(tests-offscreen ${OFFSCREEN_CTX_LIBRARIES})
 
 #
 # csgtexttest
@@ -871,6 +863,14 @@ target_link_libraries(csgtexttest tests-nocgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY
 # someone needs that binary.
 #
 if (NOGUI)
+ add_library(tests-offscreen STATIC ${OFFSCREEN_SOURCES})
+ set_target_properties(tests-offscreen PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
+ target_link_libraries(tests-offscreen ${OFFSCREEN_CTX_LIBRARIES})
+
+ add_library(tests-cgal STATIC ${CGAL_SOURCES})
+ set_target_properties(tests-cgal PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
+ target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
+
  add_executable(openscad_nogui ../src/openscad.cc)
  set_target_properties(openscad_nogui PROPERTIES COMPILE_FLAGS "-fno-strict-aliasing -DEIGEN_DONT_ALIGN ${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
  target_link_libraries(openscad_nogui tests-offscreen tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY} ${APP_SERVICES_LIBRARY})
@@ -1689,6 +1689,11 @@ add_cmdline_test(svgpngtest EXE ${PYTHON_EXECUTABLE} SCRIPT ${CMAKE_SOURCE_DIR}/
 add_failing_test(stlfailedtest EXE ${PYTHON_EXECUTABLE} SCRIPT ${CMAKE_SOURCE_DIR}/shouldfail.py ARGS --openscad=${OPENSCAD_BINPATH} --retval=1 -o SUFFIX stl FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/empty-union.scad)
 add_failing_test(offfailedtest EXE ${PYTHON_EXECUTABLE} SCRIPT ${CMAKE_SOURCE_DIR}/shouldfail.py ARGS --openscad=${OPENSCAD_BINPATH} --retval=1 -o SUFFIX off FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/empty-union.scad)
 add_failing_test(parsererrors EXE ${PYTHON_EXECUTABLE} SCRIPT ${CMAKE_SOURCE_DIR}/shouldfail.py ARGS --openscad=${OPENSCAD_BINPATH} --retval=1 -o SUFFIX stl FILES ${FAILING_FILES})
+
+# Verify that test framework is paying attention to alpha channel, issue 1492
+add_cmdline_test(openscad-colorscheme-cornfield-alphafail EXE ${OPENSCAD_BINPATH} ARGS --colorscheme=Cornfield -o SUFFIX png FILES ${CMAKE_SOURCE_DIR}/../examples/Basics/logo.scad)
+# The "expected image" supplied for this "alphafail" test has the alpha channel for all background pixels cleared (a==0), when they should be opaque (a==1) for this colorscheme.  so if test framework is functioning properly then the image comparison should fail
+set_property(TEST openscad-colorscheme-cornfield-alphafail_logo PROPERTY WILL_FAIL TRUE)
 
 #
 # Add experimental tests
